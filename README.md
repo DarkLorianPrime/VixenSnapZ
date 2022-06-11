@@ -175,16 +175,21 @@ Format: URL | METHOD\`S | NEED PARAMS | FORMDATA | HEADERS | NEED_AUTH
 # Versions
 
 [Python]
+
 3.10
 
 [MIN.IO]
+
 RELEASE.2022-06-10T16-59-15Z
 
 [Postgresql]
+
 12.11
 
 [Nginx]
+
 1.18.0
 
 [Gunicorn]
+
 20.0.4
