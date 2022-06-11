@@ -14,7 +14,7 @@ async def get_database_instance() -> Database:
 
     :return:
     """
-    db = Database(f'postgres://{os.getenv("host")}/{os.getenv("db")}', user=os.getenv("user"),
+    db = Database(f'postgres://{os.getenv("host")}/{os.getenv("DB")}', user=os.getenv("user"),
                   password=os.getenv("password"))
     await db.connect()
     return db
