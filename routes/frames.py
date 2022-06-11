@@ -10,6 +10,7 @@ from libraries.database import create_one_entry
 from libraries.minio_handler import connect_to_minio
 from libraries import database
 from libraries.request_helper import need_auth
+import pytz
 
 frames_router = APIRouter()
 
@@ -57,10 +58,10 @@ async def get_frame(frame_uuid: str):
         raise HTTPException(status_code=400, detail="Такой uuid не найден.")
 
     item = [i for i in client.list_objects(date) if frame_uuid in i.object_name]
-
+    time = item[0].last_modified.replace(tzinfo=pytz.timezone("Europe/Samara"))
     return JSONResponse(status_code=200, content={
         "response": {
-            "uploaded": str(item[0].last_modified),
+            "uploaded": time.strftime("%d.%m.%Y %H:%M:%S"),
             "filename": frame[0]["filename"]
         }})
 
@@ -79,10 +80,11 @@ async def get_all_frames(request: Request):
                                                                                       "uuid": replaced_string})
         if not frame:
             continue
-
+        time = item.last_modified.replace(tzinfo=pytz.timezone("Europe/Samara"))
         response.append({
-            "uploaded": str(item.last_modified),
-            "filename": frame[0]["filename"]
+            "uploaded": time.strftime("%d.%m.%Y %H:%M:%S"),
+            "filename": frame[0]["filename"],
+            "uuid": str(item.object_name)
         })
     await db.disconnect()
     return JSONResponse(status_code=200, content={"response": response})

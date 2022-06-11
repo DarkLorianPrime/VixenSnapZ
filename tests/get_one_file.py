@@ -3,8 +3,9 @@ import requests
 #standart_test_url = "http://127.0.0.1:8000/api"
 standart_test_url = "http://pictures.darklorian.ru/api"
 
+
 def main(headers):
-    response = requests.get(standart_test_url + "/frames/01a249c41c6348ada93cdf345e252214", headers=headers)
+    response = requests.get(standart_test_url + "/frames/14937da0b9a0453898038b441db68985", headers=headers)
     assert response.status_code == 200
     print(response.json())
 

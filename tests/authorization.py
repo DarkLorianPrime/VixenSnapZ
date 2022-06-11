@@ -5,7 +5,7 @@ standart_test_url = "http://pictures.darklorian.ru/api"
 
 
 def main():
-    response = requests.post(standart_test_url + "/login/", data={"username": "darklorian", "password": "112233"})
+    response = requests.post(standart_test_url + "/login/", data={"username": "darklorian12", "password": "112233"})
     assert response.status_code == 200
     print(response.json())
 

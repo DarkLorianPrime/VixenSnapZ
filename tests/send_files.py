@@ -3,7 +3,11 @@ import os
 import requests
 
 #standart_test_url = "http://127.0.0.1:8000/api"
+
+
 standart_test_url = "http://pictures.darklorian.ru/api"
+
+
 files_path = "photos/"
 
 
@@ -12,7 +16,6 @@ def main(headers):
     for number, file in enumerate(os.listdir(files_path)):
         files.append(("files", (open(files_path + file, "rb"))))
     response = requests.post(standart_test_url + "/frames/", files=files, headers=headers)
-    print(response.json())
     assert response.status_code == 201
     print(response.json())
 
