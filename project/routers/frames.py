@@ -6,10 +6,10 @@ from fastapi import UploadFile, File, HTTPException, APIRouter, Depends
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from libraries.database import create_one_entry
-from libraries.minio_handler import connect_to_minio
-from libraries import database
-from libraries.request_helper import need_auth
+from libraries_deprecated.database import create_one_entry
+from libraries_deprecated.minio_handler import connect_to_minio
+from libraries_deprecated import database
+from libraries_deprecated.request_helper import need_auth
 import pytz
 
 frames_router = APIRouter()

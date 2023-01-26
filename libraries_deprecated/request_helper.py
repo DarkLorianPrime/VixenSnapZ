@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from libraries import database
+from libraries_deprecated import database
 
 
 async def need_auth(request: Request):

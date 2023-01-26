@@ -5,7 +5,7 @@ import dotenv
 import sqlalchemy
 from sqlalchemy.engine import Engine
 
-dotenv.load_dotenv("libraries/.env")
+dotenv.load_dotenv("libraries_deprecated/.env")
 
 
 def get_db_instance():

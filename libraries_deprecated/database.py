@@ -6,7 +6,7 @@ import dotenv
 from databases import Database
 
 
-dotenv.load_dotenv("libraries/.env")
+dotenv.load_dotenv("libraries_deprecated/.env")
 
 
 async def get_database_instance() -> Database:
