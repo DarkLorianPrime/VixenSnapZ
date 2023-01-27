@@ -7,7 +7,7 @@ from routers.authorization.service import Service
 router = APIRouter()
 
 
-@router.post("/registration/", response_model=RegistrationReturn)
+@router.post("/registration/", response_model=RegistrationReturn, status_code=201)
 async def create_account(credentials: dict = Depends(AuthorizationModel.as_form), service: Service = Depends(Service)):
     return await service.create_user(credentials)
 

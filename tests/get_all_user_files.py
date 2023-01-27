@@ -1,18 +1,18 @@
 import requests
 
-#standart_test_url = "http://127.0.0.1:8000/api"
-standart_test_url = "http://pictures.darklorian.ru/api"
+standart_test_url = "http://127.0.0.1:8000/api/v1"
+# standart_test_url = "http://pictures.darklorian.ru/api"
 
 
 def main(headers):
     response = requests.get(standart_test_url + "/frames/", headers=headers)
-    print(response.text)
+    print(response.content)
     assert response.status_code == 200
     print(response.json())
 
 
 def with_auth():
-    main({"Authorization": "Token 348c626e03c54c8292ae0b80575066e3"})
+    main({"Authorization": "Bearer 8aee418b-1c93-491a-9376-6c569d1d0d7f"})
 
 
 def without_auth():
