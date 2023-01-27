@@ -27,7 +27,7 @@ cd greenatom_testcase
 python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cd libraries
+cd libraries_deprecated
 mv example.env .env
 nano .env
 ```
