@@ -54,7 +54,7 @@ class Service:
                                    "%d.%m.%Y %H:%M:%S"),
                                "filename": file.filename}
             response.append(object_response)
-        print(response)
+
         return response
 
     async def create_frame(self, user: dict, files: List[UploadFile]):
