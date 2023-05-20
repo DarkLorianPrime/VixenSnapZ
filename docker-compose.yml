@@ -1,4 +1,15 @@
-version: "3.7"
+version: "3.10"
+
+x-minio-environment: &x-minio-environment
+  MINIO_ROOT_USER: ${MINIO_USER}
+  MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+
+x-postgres-environment: &x-postgres-environment
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_HOST: ${POSTGRES_HOST}
+  POSTGRES_NAME: ${POSTGRES_NAME}
+
 services:
   minio:
     restart: always
@@ -7,11 +18,28 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: darklorian
-      MINIO_ROOT_PASSWORD: 36PRIMELor00
+      <<: *x-minio-environment
     command: server /export --console-address :9001
-  backend:
+
+  database:
     restart: always
-    build: .
+    image: postgres:alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      << : *x-postgres-environment
+
+  backend:
+    depends_on:
+      - database
+      - minio
+    environment:
+      <<: [*x-minio-environment, *x-postgres-environment]
+      ACCESS_KEY: ${ACCESS_KEY}
+    restart: always
+    build: backend
     ports:
       - "8000:8000"
+
+volumes:
+  pgdata:

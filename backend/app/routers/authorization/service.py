@@ -7,8 +7,8 @@ from sqlalchemy import select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from libraries.database import get_session
-from libraries.decorators import logger
-from routers.authorization.models import User, UserLogs
+from routers.authorization.models import User
+from routers.authorization.pydantic_models import AuthorizationModel
 from routers.authorization.responses import Responses
 
 
@@ -40,34 +40,30 @@ class Service:
         self.session = session
         self.password_manager = PasswordMethods(session)
 
-    @logger("create user")
-    async def create_user(self, credentials: dict):
-        is_exists = await self.session.execute(exists().where(User.username == credentials["username"]).select())
+    async def is_user_exists(self, username) -> bool:
+        stmt = exists().where(User.username == username).select()
+        result = await self.session.execute(stmt)
+        return result.scalar()
 
-        if is_exists.scalar():
-            raise HTTPException(status_code=400, detail=Responses.ACCOUNT_EXISTS)
-
-        credentials["password"] = await self.password_manager.create_password(credentials["password"])
+    async def create_user(self, credentials: AuthorizationModel) -> User:
+        password = await self.password_manager.create_password(credentials.password)
+        credentials = credentials.dict()
+        credentials["password"] = password
 
         user = User(**credentials)
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
-        return user.__dict__
+        return user
 
-    @logger("auth user")
-    async def get_user_token(self, credentials: dict) -> uuid.UUID:
-        user = await self.password_manager.check_password(**credentials)
+    async def get_user_token(self, credentials: AuthorizationModel) -> uuid.UUID:
+        user = await self.password_manager.check_password(username=credentials.username, password=credentials.password)
+
         if user is None:
-            raise HTTPException(status_code=403, detail=Responses.LOGIN_OR_PASSWORD_NF)
+            raise HTTPException(status_code=404, detail=Responses.LOGIN_OR_PASSWORD_NF)
 
-        return user.__dict__
+        return user.access_token
 
-    async def get_user_by_token(self, token: str | uuid.UUID):
+    async def get_user_by_token(self, token: str | uuid.UUID) -> User:
         query = await self.session.execute(select(User).where(User.access_token == token))
         return query.scalars().first()
-
-    async def insert_into_logger(self, user_id: uuid.UUID, event: str):
-        user_logs = UserLogs(user_id=user_id, event=event)
-        self.session.add(user_logs)
-        await self.session.commit()

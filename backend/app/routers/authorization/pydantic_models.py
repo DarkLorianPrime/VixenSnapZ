@@ -2,12 +2,11 @@ import uuid
 
 from pydantic import BaseModel, validator
 
-from libraries.depends import as_form
+from libraries.utils.pydantic_base import CustomModel
 from routers.authorization.validators import password_validate, username_validate
 
 
-@as_form
-class AuthorizationModel(BaseModel):
+class AuthorizationModel(CustomModel):
     username: str
     password: str
 
@@ -24,6 +23,9 @@ class RegistrationReturn(BaseModel):
     id: uuid.UUID
     username: str
 
+    class Config:
+        orm_mode = True
+
 
 class AuthorizationReturn(BaseModel):
     access_token: uuid.UUID
@@ -32,3 +34,6 @@ class AuthorizationReturn(BaseModel):
 class GetMe(BaseModel):
     id: uuid.UUID
     username: str
+
+    class Config:
+        orm_mode = True

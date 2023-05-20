@@ -11,6 +11,7 @@ from starlette.status import HTTP_400_BAD_REQUEST
 
 from libraries.database import get_session
 from libraries.s3_handler import get_minio
+from routers.authorization.models import User
 from routers.frames.models import InBox
 from routers.frames.responses import Responses
 
@@ -36,7 +37,7 @@ class Service:
         query = await self.session.execute(select(InBox).where(*query))
         return query.scalars().first()
 
-    async def get_frames(self, user: dict):
+    async def get_frames(self, user: User):
         bucket_name = datetime.datetime.now().strftime("%Y%m%d")
         response = []
         if not self.minio.bucket_exists(bucket_name):
@@ -44,20 +45,19 @@ class Service:
 
         for frame in self.minio.list_objects(bucket_name):
             file_uuid = frame.object_name.replace(".png", "")
-            file = await self.get_frame(user_id=user["id"], file_uuid=file_uuid)
+            file = await self.get_frame(user_id=user.id, file_uuid=file_uuid)
 
             if not file:
                 continue
 
-            object_response = {"uuid": frame.object_name,
-                               "uploaded": frame.last_modified.replace(tzinfo=pytz.timezone("Europe/Samara")).strftime(
-                                   "%d.%m.%Y %H:%M:%S"),
-                               "filename": file.filename}
+            date = frame.last_modified.replace(tzinfo=pytz.timezone("Europe/Samara")).strftime("%d.%m.%Y %H:%M:%S")
+            object_response = {"uuid": frame.object_name, "uploaded": date, "filename": file.filename}
+
             response.append(object_response)
 
         return response
 
-    async def create_frame(self, user: dict, files: List[UploadFile]):
+    async def create_frame(self, user: User, files: List[UploadFile]):
         bucket_name = datetime.datetime.now().strftime("%Y%m%d")
 
         if not self.minio.bucket_exists(bucket_name):
@@ -74,16 +74,15 @@ class Service:
                 "filename": file.filename
             })
 
-            box = InBox(filename=file.filename, file_uuid=file_uuid, bucketname=bucket_name, user_id=user["id"])
+            box = InBox(filename=file.filename, file_uuid=file_uuid, bucketname=bucket_name, user_id=user.id)
             self.session.add(box)
-            await self.session.commit()
 
             self.minio.put_object(bucket_name=bucket_name,
                                   object_name=f"{file_uuid}.png",
                                   data=file.file,
                                   length=-1,
                                   part_size=10485760)
-
+        await self.session.commit()
         return created
 
     async def get_one_frame(self, frame_uuid: str):
@@ -102,14 +101,14 @@ class Service:
             "filename": frame.filename
         }
 
-    async def delete_frame(self, frame_uuid: str, user: dict):
-        frame = await self.get_frame(user_id=user["id"], file_uuid=frame_uuid)
+    async def delete_frame(self, frame_uuid: str, user: User) -> None:
+        frame = await self.get_frame(user_id=user.id, file_uuid=frame_uuid)
 
         if not frame:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_YOUR_FRAME)
 
         bucket_name = datetime.datetime.now().strftime("%Y%m%d")
-        self.minio.remove_object(bucket_name, frame_uuid + ".png")
+        self.minio.remove_object(bucket_name, f"{frame_uuid}.png")
 
         await self.session.delete(frame)
         await self.session.commit()
