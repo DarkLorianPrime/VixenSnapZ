@@ -19,6 +19,8 @@ services:
       - "9001:9001"
     environment:
       <<: *x-minio-environment
+    volumes:
+      - mindata:/export
     command: server /export --console-address :9001
 
   database:
@@ -43,3 +45,4 @@ services:
 
 volumes:
   pgdata:
+  mindata:
