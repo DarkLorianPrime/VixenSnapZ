@@ -78,7 +78,7 @@ class Service:
             self.session.add(box)
 
             self.minio.put_object(bucket_name=bucket_name,
-                                  object_name=f"{file_uuid}.png",
+                                  object_name=str(file_uuid),
                                   data=file.file,
                                   length=-1,
                                   part_size=10485760)
@@ -108,7 +108,7 @@ class Service:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_YOUR_FRAME)
 
         bucket_name = datetime.datetime.now().strftime("%Y%m%d")
-        self.minio.remove_object(bucket_name, f"{frame_uuid}.png")
+        self.minio.remove_object(bucket_name, frame_uuid)
 
         await self.session.delete(frame)
         await self.session.commit()
