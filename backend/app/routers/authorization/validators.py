@@ -1,6 +1,7 @@
 import re
 
 from fastapi import HTTPException
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from routers.authorization.responses import Responses
 
@@ -17,3 +18,10 @@ def password_validate(password: str) -> str:
         raise HTTPException(status_code=422, detail=Responses.NOT_VALID_CYRILLIC_OR_LENGTH)
 
     return password
+
+
+def email_validate(value: str) -> str:
+    if not re.fullmatch(r"^\S+@\S+\.\S+$", value):
+        raise HTTPException(status_code=422, detail=Responses.EMAIL_NOT_VALID)
+
+    return value
