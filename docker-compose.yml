@@ -40,6 +40,8 @@ services:
       ACCESS_KEY: ${ACCESS_KEY}
     restart: always
     build: backend
+    volumes:
+      - "./backend/app:/application"
     ports:
       - "8000:8000"
 
