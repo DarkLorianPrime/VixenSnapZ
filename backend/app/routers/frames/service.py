@@ -1,19 +1,28 @@
 import datetime
 import uuid
-from typing import List
+from typing import List, Optional, Sequence
 
-import pytz
 from fastapi import Depends, UploadFile, HTTPException
 from minio import Minio
-from sqlalchemy import exists, select
+from sqlalchemy import exists, select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from libraries.database import get_session
-from libraries.s3_handler import get_minio
+from routers.authorization.pydantic_models import GetUser
+from routers.frames.validators import filetype_validate
+from storages.database import get_session
+from storages.s3 import get_minio
 from routers.authorization.models import User
-from routers.frames.models import InBox
+from routers.categories.models import Category
+from routers.frames.models import Frame, Attachments
 from routers.frames.responses import Responses
+import random
+import string
+
+
+def generate_short(length):
+    letters = string.ascii_letters + string.digits
+    return ''.join(random.choice(letters) for _ in range(length))
 
 
 class Service:
@@ -21,88 +30,127 @@ class Service:
         self.session = session
         self.minio = minio
 
-    async def is_frame_exists(self, user_id: int, file_uuid: uuid.UUID):
-        query = exists().where(InBox.user_id == user_id, InBox.file_uuid == file_uuid).select()
-        is_user_exists = await self.session.execute(query)
-        return is_user_exists.scalar()
+    async def get_attachments_many(self, frames: Sequence[Frame]):
+        frame_ids = [frame.id for frame in frames]
+        stmt = select(Attachments).filter(Attachments.frame_id.in_(frame_ids)).distinct(Attachments.frame_id)
+        response = await self.session.execute(stmt)
+        response_scalar = response.scalars().all()
 
-    async def get_frame(self, user_id: int | None = None, file_uuid: str | None = None):
+        return response_scalar
+
+    async def get_attachments(self, frame_id: uuid.UUID, one: bool):
+        stmt = select(Attachments).where(Attachments.frame_id == frame_id).order_by(Attachments.order)
+        response = await self.session.execute(stmt)
+        response_scalar = response.scalars()
+        if one:
+            return response_scalar.first()
+
+        return response_scalar.all()
+
+    async def get_frame(
+            self,
+            user_id: Optional[int] = None,
+            frame_id: Optional[str] = None,
+            one: Optional[bool] = True
+    ):
         query = []
         if user_id is not None:
-            query.append(InBox.user_id == user_id)
+            query.append(Frame.owner_id == user_id)
 
-        if file_uuid is not None:
-            query.append(InBox.file_uuid == file_uuid)
+        if frame_id is not None:
+            query.append(Frame.id == frame_id)
 
-        query = await self.session.execute(select(InBox).where(*query))
-        return query.scalars().first()
+        stmt = select(Frame).where(*query)
+        result = await self.session.execute(stmt)
+
+        scalar_result = result.scalars()
+        if one:
+            return scalar_result.first()
+
+        return scalar_result.all()
 
     async def get_frames(self, user: User):
-        bucket_name = datetime.datetime.now().strftime("%Y%m%d")
         response = []
-        if not self.minio.bucket_exists(bucket_name):
-            self.minio.make_bucket(bucket_name)
+        frames = await self.get_frame(user_id=user.id, one=False)
+        if not frames:
+            return response
 
-        for frame in self.minio.list_objects(bucket_name):
-            file_uuid = frame.object_name.replace(".png", "")
-            file = await self.get_frame(user_id=user.id, file_uuid=file_uuid)
+        attachments = await self.get_attachments_many(frames=frames)
+        attachments_dict = {attachment.frame_id: attachment.content for attachment in attachments}
 
-            if not file:
-                continue
-
-            date = frame.last_modified.replace(tzinfo=pytz.timezone("Europe/Samara")).strftime("%d.%m.%Y %H:%M:%S")
-            object_response = {"uuid": frame.object_name, "uploaded": date, "filename": file.filename}
-
-            response.append(object_response)
+        for frame in frames:
+            frame_response = frame.fields
+            frame_response["preview"] = attachments_dict.get(frame.id, None)
+            response.append(frame_response)
 
         return response
 
-    async def create_frame(self, user: User, files: List[UploadFile]):
-        bucket_name = datetime.datetime.now().strftime("%Y%m%d")
+    async def create_frame(
+            self,
+            user: GetUser,
+            files: List[UploadFile],
+            category_id: uuid.UUID,
+            name: str,
+            description: Optional[str] = None
+    ):
+        short_url = f"/s/{generate_short(12)}"
 
-        if not self.minio.bucket_exists(bucket_name):
-            self.minio.make_bucket(bucket_name)
+        create_data = {
+            "name": name,
+            "owner_id": user.id,
+            "category": category_id,
+            "short_url": short_url,
+            "description": description
+        }
 
-        created = []
-        for file in files:
-            if ".png" not in file.filename and ".jpg" not in file.filename:
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_IMAGE_TYPE)
+        stmt = insert(Frame).values(**create_data).returning(Frame.id)
+        frame = await self.session.execute(stmt)
+        frame_id = frame.scalars().first()
 
-            file_uuid = uuid.uuid4()
-            created.append({
-                "server_name": str(file_uuid),
-                "filename": file.filename
-            })
+        files_bodies = [
+            {
+                "order": num,
+                "content": file,
+                "frame_id": frame_id
+            } for num, file in enumerate(files) if await filetype_validate(file.filename)
+        ]
 
-            box = InBox(filename=file.filename, file_uuid=file_uuid, bucketname=bucket_name, user_id=user.id)
-            self.session.add(box)
+        stmt = insert(Attachments).returning(Attachments.content, Attachments.order)
+        result = await self.session.execute(stmt, files_bodies)
 
-            self.minio.put_object(bucket_name=bucket_name,
-                                  object_name=str(file_uuid),
-                                  data=file.file,
-                                  length=-1,
-                                  part_size=10485760)
+        create_data.update(
+            {
+                "id": frame_id,
+                "attachments": [
+                    {
+                        "url": attachment[0],
+                        "order": attachment[1]
+                    } for attachment in result.all()
+                ]
+            }
+        )
         await self.session.commit()
-        return created
+        return create_data
 
     async def get_one_frame(self, frame_uuid: str):
-        frame = await self.get_frame(file_uuid=frame_uuid)
+        frame = await self.get_frame(frame_id=frame_uuid)
 
         if not frame:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_EXISTS_FRAME)
 
-        bucket_name = datetime.datetime.now().strftime("%Y%m%d")
-        item = [i for i in self.minio.list_objects(bucket_name=bucket_name) if frame_uuid in i.object_name]
-        time = item[0].last_modified.replace(tzinfo=pytz.timezone("Europe/Samara"))
+        attachments = await self.get_attachments(frame_id=frame.id, one=False)
 
-        return {
-            "uploaded": time.strftime("%d.%m.%Y %H:%M:%S"),
-            "uuid": frame_uuid,
-            "filename": frame.filename
-        }
+        frame_response = frame.fields
+        frame_response["attachments"] = [
+            {
+                "url": attachment.content,
+                "order": attachment.order
+            } for attachment in attachments
+        ]
+        return frame_response
 
     async def delete_frame(self, frame_uuid: str, user: User) -> None:
-        frame = await self.get_frame(user_id=user.id, file_uuid=frame_uuid)
+        frame = await self.get_frame(user_id=user.id, frame_id=frame_uuid, one=True)
 
         if not frame:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_YOUR_FRAME)
@@ -112,3 +160,8 @@ class Service:
 
         await self.session.delete(frame)
         await self.session.commit()
+
+    async def is_category_exists(self, category_id):
+        stmt = exists().where(Category.id == category_id).select()
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
