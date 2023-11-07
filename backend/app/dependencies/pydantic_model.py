@@ -1,8 +1,9 @@
 from json import JSONDecodeError
 from typing import Self
 
-from pydantic import BaseModel
 from starlette.requests import Request
+
+from pydantic import BaseModel
 
 
 class CustomModel(BaseModel):
@@ -14,5 +15,4 @@ class CustomModel(BaseModel):
                 data = await request.json()
             except JSONDecodeError:
                 data = {}
-
         return cls(**data)
