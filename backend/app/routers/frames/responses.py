@@ -4,3 +4,4 @@ class Responses:
     NOT_YOUR_FRAME = "This frame does not exist or is not yours"
     NOT_EXISTS_FRAME = "This frame does not exist"
     BUCKET_DOES_NOT_EXISTS = ""
+    CATEGORY_DOES_NOT_EXISTS = "This category does not exist"
