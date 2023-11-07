@@ -3,6 +3,7 @@ import re
 import uuid
 from typing import Optional, Any
 
+from fastapi import UploadFile
 from sqlalchemy import Dialect, types
 from sqlalchemy.sql.type_api import _T, TypeDecorator
 
@@ -19,7 +20,7 @@ class File(TypeDecorator):
         self.is_need: bool = is_need_folder
         self.bucket: str = bucket
 
-    def process_bind_param(self, value: Optional[_T], dialect: Dialect) -> Any:
+    def process_bind_param(self, value: Optional[UploadFile], dialect: Dialect) -> Any:
         folder = ""
         if self.is_need:
             folder = datetime.datetime.now().strftime("%Y%m%d")

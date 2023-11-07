@@ -25,7 +25,7 @@ users_router = APIRouter(prefix="/users")
 )
 async def create_account(
         credentials: Annotated[RegistrationModel, Depends(RegistrationModel.to_form)],
-        service: Service = Depends(Service)
+        service: Annotated[Service, Depends()]
 ):
     if await service.is_user_exists(credentials.username, credentials.email):
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.ACCOUNT_EXISTS)

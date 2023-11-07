@@ -1,5 +1,5 @@
 from fastapi.encoders import jsonable_encoder
-from pydantic_model import ValidationError
+from pydantic import ValidationError
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse

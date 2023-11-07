@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import BaseModel
 
-from libraries.pydantic_base import CustomModel
+from dependencies.pydantic_model import CustomModel
 
 
 class GetFrame(BaseModel):

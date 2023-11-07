@@ -1,13 +1,12 @@
 import uuid
 from typing import List, Annotated
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 
-from libraries.authenticator import verifier
 from routers.authorization.pydantic_models import GetMe, GetUser
 from routers.authorization.service import get_user
-from routers.frames.pydantic_models import GetFrame, CreateFrame, FrameResponse, FrameOneResponse, FrameAllResponse
+from routers.frames.pydantic_models import CreateFrame, FrameOneResponse, FrameAllResponse
 from routers.frames.responses import Responses
 from routers.frames.service import Service
 
@@ -18,7 +17,10 @@ router = APIRouter()
     "/frames/",
     response_model=List[FrameAllResponse]
 )
-async def get_frames(user: verifier = Depends(verifier), service: Service = Depends(Service)):
+async def get_frames(
+        user: Annotated[GetMe, Depends(get_user)],
+        service: Annotated[Service, Depends()]
+):
     return await service.get_frames(user)
 
 
@@ -44,10 +46,13 @@ async def create_frames(
 
 @router.get(
     "/frames/{frame_uuid}/",
-    dependencies=[Depends(verifier)],
+    dependencies=[Depends(get_user)],
     response_model=FrameOneResponse
 )
-async def get_frame(frame_uuid: str, service: Service = Depends(Service)):
+async def get_frame(
+        frame_uuid: str,
+        service: Annotated[Service, Depends()]
+):
     return await service.get_one_frame(frame_uuid)
 
 
@@ -56,5 +61,9 @@ async def get_frame(frame_uuid: str, service: Service = Depends(Service)):
     status_code=HTTP_204_NO_CONTENT,
     responses={204: {"model": None}}
 )
-async def delete_frame(frame_uuid: str, service: Service = Depends(Service), user: verifier = Depends(verifier)):
+async def delete_frame(
+        frame_uuid: uuid.UUID,
+        user: Annotated[GetMe, Depends(get_user)],
+        service: Annotated[Service, Depends()]
+):
     await service.delete_frame(frame_uuid, user)

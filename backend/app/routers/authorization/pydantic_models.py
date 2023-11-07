@@ -1,11 +1,9 @@
 import datetime
 import uuid
-from typing import List
 
-from fastapi import UploadFile
 from pydantic import BaseModel, validator
 
-from libraries.pydantic_base import CustomModel
+from dependencies.pydantic_model import CustomModel
 from routers.authorization.validators import password_validate, username_validate, email_validate
 
 

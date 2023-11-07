@@ -8,7 +8,7 @@ from sqlalchemy import exists, select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from routers.authorization.pydantic_models import GetUser
+from routers.authorization.pydantic_models import GetUser, GetMe
 from routers.frames.validators import filetype_validate
 from storages.database import get_session
 from storages.s3 import get_minio
@@ -49,8 +49,8 @@ class Service:
 
     async def get_frame(
             self,
-            user_id: Optional[int] = None,
-            frame_id: Optional[str] = None,
+            user_id: Optional[uuid.UUID] = None,
+            frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
     ):
         query = []
@@ -69,7 +69,7 @@ class Service:
 
         return scalar_result.all()
 
-    async def get_frames(self, user: User):
+    async def get_frames(self, user: User | GetMe):
         response = []
         frames = await self.get_frame(user_id=user.id, one=False)
         if not frames:
@@ -149,7 +149,7 @@ class Service:
         ]
         return frame_response
 
-    async def delete_frame(self, frame_uuid: str, user: User) -> None:
+    async def delete_frame(self, frame_uuid: uuid.UUID, user: User | GetMe) -> None:
         frame = await self.get_frame(user_id=user.id, frame_id=frame_uuid, one=True)
 
         if not frame:
