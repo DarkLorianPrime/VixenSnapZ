@@ -46,6 +46,7 @@ services:
       - "8000:8000"
 
   nginx:
+    restart: always
     image: nginx:latest
     depends_on:
       - backend
