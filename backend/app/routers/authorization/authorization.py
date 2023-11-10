@@ -65,4 +65,5 @@ async def get_users_me(
 async def get_users(
         service: Annotated[Service, Depends()]
 ):
+    print(await service.get_users())
     return await service.get_users()

@@ -29,6 +29,7 @@ class AuthorizationModel(CustomModel):
 
 
 class RegistrationModel(CustomModel):
+    id: uuid.UUID = None
     username: str
     password: str
     email: str

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from pydantic import ValidationError
+from starlette.middleware.cors import CORSMiddleware
 
 from dependencies.lifecycle import lifespan
 from dependencies.exceptions import validation_exception_handler
@@ -12,6 +13,14 @@ app = FastAPI(
     version="2.3.5",
     lifespan=lifespan,
     exception_handlers={ValidationError: validation_exception_handler}
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

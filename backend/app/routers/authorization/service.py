@@ -4,105 +4,135 @@ import uuid
 from typing import Annotated, Sequence
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import select, exists
+from sqlalchemy import select, exists, insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
 
 from routers import oauth2
+from routers.authorization.config import hash_token
+from routers.authorization.dependencies import validate_fields_not_empty
 from storages.database import get_session
 from routers.authorization.models import User
 from routers.authorization.pydantic_models import AuthorizationModel, RegistrationModel
 from routers.authorization.responses import Responses
 
 
-class PasswordMethods:
-    def __init__(self, session: AsyncSession):
+class UserRepository:
+    def __init__(
+            self,
+            session: AsyncSession = Depends(get_session),
+    ):
         self.session = session
-        self.token = os.getenv("ACCESS_KEY").encode()
 
-    async def create_password(self, password: str) -> hex:
-        """
-        :param password: пароль для шифровки
-        :return: зашифрованный пароль
-        """
-        return hashlib.sha256(self.token + password.encode()).hexdigest()
+    async def create(self, credentials):
+        hashed_password = await self.PasswordMethods.create_password(credentials["password"])
+        credentials["password"] = hashed_password
 
-    async def check_password(self, password: str, username: str = None, email: str = None):
-        """
-        :param email: почта для сравнения (кому принадлежит пароль)
-        :param password: пароль для сравнения (хэшируется и сравнивается с базой данных)
-        :param username: логин для сравнения (кому принадлежит пароль)
-        :return: Model instance
-        """
-        password = await self.create_password(password)
-        query = [User.password == password]
-        if username:
-            query.append(User.username == username)
+        stmt = insert(User).values(**credentials).returning(User.id)
+        result = await self.session.execute(stmt)
 
-        if email:
-            query.append(User.email == email)
+        result_scalar = result.scalars()
+        credentials["id"] = result_scalar.first()
 
-        query = await self.session.execute(select(User).where(*query))
-        return query.scalars().first()
+        await self.session.commit()
+        return credentials
 
-
-class Service:
-    def __init__(self, session: AsyncSession = Depends(get_session)):
-        self.session = session
-        self.password_manager = PasswordMethods(session)
-
-    async def is_user_exists(self, username=None, email=None) -> bool:
+    async def get(
+            self,
+            username: str = None,
+            hashed_password: str = None,
+            email: str = None,
+            access_token: uuid.UUID = None,
+            one: bool = True
+    ):
+        stmt = select(User)
         query = []
         if username:
             query.append(User.username == username)
 
+        if hashed_password:
+            query.append(User.password == hashed_password)
+
         if email:
             query.append(User.email == email)
 
-        stmt = exists().where(*query).select()
+        if access_token:
+            query.append(User.access_token == access_token)
+
+        stmt = stmt.filter(*query)
+        result = await self.session.execute(stmt)
+        scalar_result = result.scalars()
+        if one:
+            return scalar_result.first()
+
+        return scalar_result.all()
+
+    async def authorize(self, password, username: str = None, email: str = None):
+        hashed_password = await self.PasswordMethods.create_password(password)
+        user = await self.get(
+            username=username,
+            hashed_password=hashed_password,
+            email=email
+        )
+        if not user:
+            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=Responses.LOGIN_OR_PASSWORD_NF)
+
+        return user.access_token
+
+    class PasswordMethods:
+        @staticmethod
+        async def create_password(password: str) -> hex:
+            """
+            :param password: пароль для шифровки
+            :return: зашифрованный пароль
+            """
+            return hashlib.sha256(hash_token + password.encode()).hexdigest()
+
+
+class Service:
+    def __init__(
+            self,
+            session: Annotated[AsyncSession, Depends(get_session)],
+            users: Annotated[UserRepository, Depends()]
+    ):
+        self.session = session
+        self.users = users
+
+    async def is_user_exists(self, username: str, email: str) -> bool:
+        stmt = exists().where(
+            User.username == username,
+            User.email == email
+        ).select()
         result = await self.session.execute(stmt)
         return result.scalar()
 
     async def create_user(self, credentials: RegistrationModel) -> User:
-        password = await self.password_manager.create_password(credentials.password)
         credentials = credentials.dict()
-        credentials["password"] = password
+        return await self.users.create(credentials)
 
-        user = User(**credentials)
-        self.session.add(user)
-        await self.session.commit()
-        await self.session.refresh(user)
-        return user
-
-    async def get_user_token(self, credentials: AuthorizationModel) -> uuid.UUID:
-        if not credentials.username and not credentials.email:
-            raise HTTPException(status_code=HTTP_422_UNPROCESSABLE_ENTITY,
-                                detail=Responses.NOT_EMAIL_NOT_USERNAME)
-
-        user = await self.password_manager.check_password(
+    async def get_user_token(
+            self,
+            credentials: Annotated[AuthorizationModel, Depends(validate_fields_not_empty)]
+    ) -> uuid.UUID:
+        token = await self.users.authorize(
             username=credentials.username,
             email=credentials.email,
             password=credentials.password
         )
 
-        if user is None:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=Responses.LOGIN_OR_PASSWORD_NF)
+        return token
 
-        return user.access_token
-
-    async def get_user_by_token(self, token: str | uuid.UUID) -> User:
-        stmt = select(User).where(User.access_token == token)
-        query = await self.session.execute(stmt)
-        return query.scalars().first()
+    async def get_user_by_token(self, token: uuid.UUID) -> User:
+        user = await self.users.get(access_token=token)
+        return user
 
     async def get_users(self) -> Sequence[User]:
-        stmt = select(User)
-        query = await self.session.execute(stmt)
-        return query.scalars().all()
+        result = await self.users.get(one=False)
+        return result
 
 
 async def get_user(
-        token: Annotated[str, Depends(oauth2)],
+        token: Annotated[uuid.UUID, Depends(oauth2)],
         service: Annotated[Service, Depends()]
 ) -> User | None:
     user = await service.get_user_by_token(token)

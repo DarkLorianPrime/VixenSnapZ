@@ -33,7 +33,7 @@ async def create_frames(
         user: Annotated[GetUser, Depends(get_user)],
         service: Annotated[Service, Depends()],
         create_data: Annotated[CreateFrame, Depends(CreateFrame.to_form)],
-        files: List[UploadFile] = File(None)
+        files: Annotated[List[UploadFile], File(...)] = None
 ):
     if not files or len(files) > 15:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.ZERO_OR_MANY_FILES)
@@ -50,9 +50,11 @@ async def create_frames(
     response_model=FrameOneResponse
 )
 async def get_frame(
-        frame_uuid: str,
+        frame: Annotated[Service.get_one_frame, Depends()],
+        frame_uuid: uuid.UUID,
         service: Annotated[Service, Depends()]
 ):
+    print(frame)
     return await service.get_one_frame(frame_uuid)
 
 
