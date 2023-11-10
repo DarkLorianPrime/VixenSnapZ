@@ -9,7 +9,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 class Base(DeclarativeBase):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        nullable=False,
         unique=True,
         primary_key=True,
         default=uuid.uuid4
