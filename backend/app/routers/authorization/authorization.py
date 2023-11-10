@@ -14,12 +14,12 @@ from routers.authorization.pydantic_models import (
 from routers.authorization.responses import Responses
 from routers.authorization.service import Service, get_user
 
-router = APIRouter()
+router = APIRouter(prefix="/token")
 users_router = APIRouter(prefix="/users")
 
 
 @router.post(
-    "/registration/",
+    "/create/",
     response_model=RegistrationReturn,
     status_code=201
 )
@@ -34,7 +34,7 @@ async def create_account(
 
 
 @router.post(
-    "/token/",
+    "/",
     response_model=AuthorizationReturn
 )
 async def authorize(
