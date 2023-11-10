@@ -27,6 +27,7 @@ class UserRepository:
     async def create(self, credentials):
         hashed_password = await self.PasswordMethods.create_password(credentials["password"])
         credentials["password"] = hashed_password
+        del credentials["id"]
 
         stmt = insert(User).values(**credentials).returning(User.id)
         result = await self.session.execute(stmt)
