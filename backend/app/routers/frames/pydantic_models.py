@@ -26,7 +26,6 @@ class FrameResponse(BaseModel):
     id: uuid.UUID
     name: str
     owner_id: uuid.UUID
-    category: uuid.UUID
     short_url: str
     description: str
 
