@@ -161,7 +161,6 @@ class Service:
             self,
             user: GetUser,
             files: List[UploadFile],
-            category_id: uuid.UUID,
             name: str,
             description: Optional[str] = None
     ):
@@ -170,7 +169,6 @@ class Service:
         create_data = {
             "name": name,
             "owner_id": user.id,
-            "category": category_id,
             "short_url": short_url,
             "description": description
         }

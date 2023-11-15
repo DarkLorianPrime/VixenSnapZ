@@ -38,8 +38,8 @@ async def create_frames(
     if not files or len(files) > 15:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.ZERO_OR_MANY_FILES)
 
-    if not await service.is_category_exists(create_data.category_id):
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.CATEGORY_DOES_NOT_EXISTS)
+    # if not await service.is_category_exists(create_data.category_id):
+    #     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.CATEGORY_DOES_NOT_EXISTS)
 
     return await service.create_frame(user, files, **create_data.dict())
 
