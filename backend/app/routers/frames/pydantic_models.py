@@ -18,7 +18,6 @@ class Attachments(BaseModel):
 
 
 class CreateFrame(CustomModel):
-    category_id: uuid.UUID
     name: str
     description: str | None
 

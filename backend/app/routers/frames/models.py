@@ -15,7 +15,7 @@ class Frame(Base):
     short_url: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    category: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("category.id"))
+    category: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("category.id"), nullable=True)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_onupdate=func.now(),
