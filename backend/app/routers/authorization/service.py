@@ -6,7 +6,7 @@ from typing import Annotated, Sequence
 from fastapi import Depends, HTTPException
 from sqlalchemy import select, exists, insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from routers import oauth2
 from routers.authorization.config import hash_token
@@ -48,6 +48,12 @@ class UserRepository:
     ):
         stmt = select(User)
         query = []
+
+        try:
+            uuid.UUID(access_token)
+        except ValueError:
+            raise HTTPException(HTTP_403_FORBIDDEN, detail="not valid token")
+
         if username:
             query.append(User.username == username)
 
