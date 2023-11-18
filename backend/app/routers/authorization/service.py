@@ -55,6 +55,7 @@ class UserRepository:
             raise HTTPException(HTTP_403_FORBIDDEN, detail="not valid token")
         except TypeError:
             ...
+
         if username:
             query.append(User.username == username)
 

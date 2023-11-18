@@ -6,7 +6,8 @@ from starlette.status import HTTP_204_NO_CONTENT, HTTP_201_CREATED, HTTP_400_BAD
 
 from routers.authorization.pydantic_models import GetMe, GetUser
 from routers.authorization.service import get_user
-from routers.frames.pydantic_models import CreateFrame, FrameOneResponse, FrameAllResponse
+from routers.frames.pydantic_models import CreateFrame, FrameOneResponse, FrameAllResponse, Pagination, \
+    PagedResponseSchema
 from routers.frames.responses import Responses
 from routers.frames.service import Service
 
@@ -15,13 +16,20 @@ router = APIRouter()
 
 @router.get(
     "/frames/",
-    response_model=List[FrameAllResponse]
+    response_model=PagedResponseSchema[FrameAllResponse]
 )
 async def get_frames(
+        pagination: Annotated[Pagination, Depends()],
         user: Annotated[GetMe, Depends(get_user)],
-        service: Annotated[Service, Depends()]
+        service: Annotated[Service, Depends()],
+        me: bool = False
 ):
-    return await service.get_frames(user)
+    result = await service.get_frames(user, me, pagination)
+    return PagedResponseSchema(
+        total=len(result),
+        results=result,
+        **pagination.dict()
+    )
 
 
 @router.post(
@@ -69,3 +77,15 @@ async def delete_frame(
         service: Annotated[Service, Depends()]
 ):
     await service.delete_frame(frame_uuid, user)
+
+
+@router.post(
+    "/frames/{frame_uuid}/like/",
+)
+async def toggle_like_frame(
+        frame_uuid: uuid.UUID,
+        user: Annotated[GetMe, Depends(get_user)],
+        service: Annotated[Service, Depends()]
+):
+    await service.toggle_like(frame_uuid, user.id)
+    return {"status": "ok"}

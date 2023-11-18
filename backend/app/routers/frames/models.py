@@ -47,10 +47,6 @@ class Likes(Base):
     is_positive: Mapped[bool] = mapped_column(Boolean)
 
 
-class CommentLikes(Base):
-    __tablename__ = "comment_likes"
-
-
 class Views(Base):
     __tablename__ = "views"
 

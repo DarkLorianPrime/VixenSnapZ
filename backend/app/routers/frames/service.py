@@ -1,21 +1,23 @@
 import datetime
 import uuid
-from typing import List, Optional, Sequence, Annotated, Dict
+from typing import List, Optional, Sequence, Annotated, Dict, Any
 
-from fastapi import Depends, UploadFile, HTTPException, Form, Path
+from fastapi import Depends, UploadFile, HTTPException
 from minio import Minio
 from sqlalchemy import exists, select, insert, BinaryExpression
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped
+from sqlalchemy.sql.functions import count
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from routers.authorization.pydantic_models import GetUser, GetMe
+from routers.frames.pydantic_models import Pagination
 from routers.frames.validators import filetype_validate
 from storages.database import get_session
 from storages.s3 import get_minio
 from routers.authorization.models import User
 from routers.categories.models import Category
-from routers.frames.models import Frame, Attachments
+from routers.frames.models import Frame, Attachments, Likes
 from routers.frames.responses import Responses
 import random
 import string
@@ -26,17 +28,89 @@ def generate_short(length):
     return ''.join(random.choice(letters) for _ in range(length))
 
 
-class FramesRepository:
-    def __init__(self, session: AsyncSession = Depends(get_session), minio: Minio = Depends(get_minio)):
+class BaseRepository:
+    def __init__(
+            self,
+            session: Annotated[AsyncSession, Depends(get_session)],
+            minio: Annotated[Minio, Depends(get_minio)]
+    ):
         self.session = session
         self.minio = minio
 
+
+class LikeRepository(BaseRepository):
     async def get(
             self,
-            queries: Sequence[BinaryExpression],
+            frame_id: uuid.UUID = None,
+            user_id: uuid.UUID = None,
+            query: Any = None,
+            count_: bool = None,
+            distinct: Any = None,
             one: bool = False
     ):
-        stmt = select(Frame).filter(*queries)
+        queries = []
+        selected_obj = [Likes.frame_id]
+        if count_:
+            selected_obj.append(count(Likes.frame_id).label("count"))
+
+        stmt = select(*selected_obj)
+        if count_:
+            stmt = stmt.group_by(Likes.frame_id)
+
+        if frame_id:
+            queries.append(Likes.frame_id == frame_id)
+
+        if user_id:
+            queries.append(Likes.owner_id == user_id)
+
+        if query is not None:
+            queries.append(query)
+
+        if distinct:
+            stmt = stmt.distinct(distinct)
+
+        stmt = stmt.where(*queries)
+        result = await self.session.execute(stmt)
+        if count_:
+            return result.all()
+
+        scalar_result = result.scalars()
+        if not one:
+            return scalar_result.all()
+
+        return scalar_result.first()
+
+    async def create(
+            self,
+            frame_id: uuid.UUID,
+            user_id: uuid.UUID
+    ):
+        stmt = insert(Likes).values(frame_id=frame_id, owner_id=user_id, is_positive=True)
+        await self.session.execute(stmt)
+
+    async def delete(self, like: Likes):
+        await self.session.delete(like)
+
+
+class FramesRepository(BaseRepository):
+    async def get(
+            self,
+            limit: int,
+            offset: int,
+            user_id: uuid.UUID = None,
+            frame_id: uuid.UUID = None,
+            one: bool = False
+    ):
+        queries = []
+        stmt = select(Frame).limit(limit).offset(offset)
+
+        if user_id:
+            queries.append(Frame.owner_id == user_id)
+
+        if frame_id:
+            queries.append(Frame.id == frame_id)
+
+        stmt = stmt.filter(*queries)
         result = await self.session.execute(stmt)
 
         scalar_result = result.scalars()
@@ -58,11 +132,7 @@ class FramesRepository:
         await self.session.delete(frame)
 
 
-class AttachmentsRepository:
-    def __init__(self, session: AsyncSession = Depends(get_session), minio: Minio = Depends(get_minio)):
-        self.session = session
-        self.minio = minio
-
+class AttachmentsRepository(BaseRepository):
     async def get(
             self,
             query: BinaryExpression,
@@ -103,17 +173,30 @@ class Service:
             session: Annotated[AsyncSession, Depends(get_session)],
             minio: Annotated[Minio, Depends(get_minio)],
             frames: Annotated[FramesRepository, Depends()],
-            attachments: Annotated[AttachmentsRepository, Depends()]
+            attachments: Annotated[AttachmentsRepository, Depends()],
+            likes: Annotated[LikeRepository, Depends()]
     ):
         self.session = session
         self.minio = minio
         self.frames = frames
         self.attachments = attachments
+        self.likes = likes
 
-    async def get_attachments_many(self, frames: Sequence[Frame]):
-        frame_ids = [frame.id for frame in frames]
+    async def get_user_liked_frames(self, frames_id: Sequence[int], user_id: uuid.UUID):
+        return await self.likes.get(
+            query=Likes.frame_id.in_(frames_id),
+            user_id=user_id
+        )
+
+    async def get_likes_many(self, frames_id: Sequence[int]):
+        return await self.likes.get(
+            query=Likes.frame_id.in_(frames_id),
+            count_=True,
+        )
+
+    async def get_attachments_many(self, frames_id: Sequence[int]):
         return await self.attachments.get(
-            query=Attachments.frame_id.in_(frame_ids),
+            query=Attachments.frame_id.in_(frames_id),
             distinct=Attachments.frame_id
         )
 
@@ -125,34 +208,55 @@ class Service:
 
     async def get_frame(
             self,
+            limit: int,
+            offset: int,
             user_id: Optional[uuid.UUID] = None,
             frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
     ):
-        query = []
-        if user_id is not None:
-            query.append(Frame.owner_id == user_id)
-
-        if frame_id is not None:
-            query.append(Frame.id == frame_id)
-
         return await self.frames.get(
-            queries=query,
-            one=one
+            user_id=user_id,
+            frame_id=frame_id,
+            one=one,
+            limit=limit,
+            offset=offset
         )
 
-    async def get_frames(self, user: User | GetMe):
+    async def get_frames(
+            self,
+            user: User | GetMe,
+            me: bool,
+            pagination: Pagination
+    ):
         response = []
-        frames = await self.get_frame(user_id=user.id, one=False)
+        pagination = {
+            "offset": (pagination.page - 1) * pagination.count,
+            "limit": pagination.page * pagination.count
+        }
+        frames_params = {"one": False, **pagination}
+        if me:
+            frames_params["user_id"] = user.id
+
+        frames = await self.get_frame(**frames_params)
         if not frames:
             return response
 
-        attachments = await self.get_attachments_many(frames=frames)
+        frames_id = [frame.id for frame in frames]
+
+        attachments = await self.get_attachments_many(frames_id=frames_id)
         attachments_dict = {attachment.frame_id: attachment.content for attachment in attachments}
+
+        posts_likes = await self.get_likes_many(frames_id=frames_id)
+        likes_dict = {like[0]: like[1] for like in posts_likes}
+
+        liked_posts = await self.get_user_liked_frames(frames_id=frames_id, user_id=user.id)
+        liked_posts_list = [like for like in liked_posts]
 
         for frame in frames:
             frame_response = frame.fields
             frame_response["preview"] = attachments_dict.get(frame.id, None)
+            frame_response["likes"] = likes_dict.get(frame.id, 0)
+            frame_response["is_liked"] = frame.id in liked_posts_list
             response.append(frame_response)
 
         return response
@@ -237,3 +341,23 @@ class Service:
         stmt = exists().where(Category.id == category_id).select()
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def toggle_like(
+            self,
+            frame_uuid: uuid.UUID,
+            user_id: uuid.UUID
+    ):
+        like = await self.likes.get(
+            frame_id=frame_uuid,
+            user_id=user_id,
+            one=True
+        )
+        if not like:
+            await self.likes.create(
+                frame_id=frame_uuid,
+                user_id=user_id
+            )
+            await self.session.commit()
+            return
+
+        return await self.likes.delete(like)

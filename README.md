@@ -151,7 +151,7 @@ $ tree
 │   │   │   ├── authenticator.py
 │   │   │   ├── database.py
 │   │   │   ├── depends.py
-│   │   │   └── s3_handler.py
+│   │   │   └── s3.py
 │   │   ├── main.py
 │   │   └── routers
 │   │       ├── authorization
@@ -183,7 +183,7 @@ $ tree
 ```
 - Устанавливаем ENV
 ```bash
-mv .example.env .env
+mv .env .env
 nano .env
 
 --.env--
