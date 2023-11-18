@@ -49,9 +49,12 @@ class LikeRepository(BaseRepository):
             one: bool = False
     ):
         queries = []
-        selected_obj = [Likes.frame_id]
+        selected_obj = [Likes]
         if count_:
-            selected_obj.append(count(Likes.frame_id).label("count"))
+            selected_obj = [
+                Likes.frame_id,
+                count(Likes.frame_id).label("count")
+            ]
 
         stmt = select(*selected_obj)
         if count_:
@@ -251,7 +254,7 @@ class Service:
         likes_dict = {like[0]: like[1] for like in posts_likes}
 
         liked_posts = await self.get_user_liked_frames(frames_id=frames_id, user_id=user.id)
-        liked_posts_list = [like for like in liked_posts]
+        liked_posts_list = [like.frame_id for like in liked_posts]
 
         for frame in frames:
             frame_response = frame.fields
@@ -316,8 +319,11 @@ class Service:
         is_liked = await self.get_user_liked_frames(frames_id=[frame.id], user_id=user.id)
 
         frame_response = frame.fields
-        frame_response["likes"] = post_likes[0][1]
-        frame_response["is_liked"] = frame.id in is_liked
+
+        frame_response["likes"] = 0
+        if post_likes:
+            frame_response["likes"] = post_likes[0][1]
+        frame_response["is_liked"] = bool(is_liked)
         frame_response["attachments"] = [
             {
                 "url": attachment.content,
@@ -362,7 +368,8 @@ class Service:
                 frame_id=frame_uuid,
                 user_id=user_id
             )
-            await self.session.commit()
-            return
 
-        return await self.likes.delete(like)
+        else:
+            await self.likes.delete(like)
+
+        return await self.session.commit()
