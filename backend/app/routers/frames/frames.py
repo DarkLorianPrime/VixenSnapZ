@@ -54,16 +54,14 @@ async def create_frames(
 
 @router.get(
     "/frames/{frame_uuid}/",
-    dependencies=[Depends(get_user)],
     response_model=FrameOneResponse
 )
 async def get_frame(
-        frame: Annotated[Service.get_one_frame, Depends()],
+        user: Annotated[GetMe, Depends(get_user)],
         frame_uuid: uuid.UUID,
         service: Annotated[Service, Depends()]
 ):
-    print(frame)
-    return await service.get_one_frame(frame_uuid)
+    return await service.get_one_frame(user, frame_uuid)
 
 
 @router.delete(

@@ -188,9 +188,10 @@ class Service:
             user_id=user_id
         )
 
-    async def get_likes_many(self, frames_id: Sequence[int]):
+    async def get_likes_many(self, frames_id: Sequence[int], user_id: uuid.UUID | None = None):
         return await self.likes.get(
             query=Likes.frame_id.in_(frames_id),
+            user_id=user_id,
             count_=True,
         )
 
@@ -208,8 +209,8 @@ class Service:
 
     async def get_frame(
             self,
-            limit: int,
-            offset: int,
+            limit: int = None,
+            offset: int = None,
             user_id: Optional[uuid.UUID] = None,
             frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
@@ -304,15 +305,19 @@ class Service:
         await self.session.commit()
         return create_data
 
-    async def get_one_frame(self, frame_uuid=None):
+    async def get_one_frame(self, user: GetMe | User, frame_uuid=None):
         frame = await self.get_frame(frame_id=frame_uuid)
 
         if not frame:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_EXISTS_FRAME)
 
         attachments = await self.get_attachments(frame_id=frame.id, one=False)
+        post_likes = await self.get_likes_many(frames_id=[frame.id], user_id=user.id)
+        is_liked = await self.get_user_liked_frames(frames_id=[frame.id], user_id=user.id)
 
         frame_response = frame.fields
+        frame_response["likes"] = post_likes[0][1]
+        frame_response["is_liked"] = frame.id in is_liked
         frame_response["attachments"] = [
             {
                 "url": attachment.content,
