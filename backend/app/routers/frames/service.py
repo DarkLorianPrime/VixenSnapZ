@@ -250,7 +250,7 @@ class Service:
         frames = await self.get_frame(**frames_params)
         if not frames:
             return response
-        print(frames[0])
+
         frames_id = [frame[0].id for frame in frames]
 
         attachments = await self.get_attachments_many(frames_id=frames_id)
@@ -261,12 +261,12 @@ class Service:
 
         liked_posts = await self.get_user_liked_frames(frames_id=frames_id, user_id=user.id)
         liked_posts_list = [like.frame_id for like in liked_posts]
-        print(len(frames))
+        print(len(frames_id))
         for frame in frames:
-            frame_response = frame.fields
-            frame_response["preview"] = attachments_dict.get(frame.id, None)
-            frame_response["likes"] = likes_dict.get(frame.id, 0)
-            frame_response["is_liked"] = frame.id in liked_posts_list
+            frame_response = frame[0].fields
+            frame_response["preview"] = attachments_dict.get(frame[0].id, None)
+            frame_response["likes"] = likes_dict.get(frame[0].id, 0)
+            frame_response["is_liked"] = frame[0].id in liked_posts_list
             response.append(frame_response)
 
         return response
