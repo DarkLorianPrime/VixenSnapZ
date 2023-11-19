@@ -250,7 +250,7 @@ class Service:
         frames = await self.get_frame(**frames_params)
         if not frames:
             return response
-
+        print(frames[0])
         frames_id = [frame.id for frame in frames]
 
         attachments = await self.get_attachments_many(frames_id=frames_id)
