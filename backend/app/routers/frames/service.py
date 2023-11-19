@@ -219,6 +219,7 @@ class Service:
             frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
     ):
+        print((await self.session.execute(select(Frame).offset(20).limit(30))).scalars().all())
         return await self.frames.get(
             user_id=user_id,
             frame_id=frame_id,
