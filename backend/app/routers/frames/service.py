@@ -114,7 +114,7 @@ class FramesRepository(BaseRepository):
             queries.append(Frame.id == frame_id)
 
         stmt = stmt.filter(*queries).offset(offset).limit(limit)
-        print(stmt)
+        print(offset, limit)
         result = await self.session.execute(stmt)
 
         scalar_result = result.scalars()
