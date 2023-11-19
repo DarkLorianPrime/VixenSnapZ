@@ -118,9 +118,6 @@ class FramesRepository(BaseRepository):
             stmt = stmt.limit(limit).offset(offset).distinct()
 
         result = await self.session.execute(stmt)
-        print(stmt.compile(compile_kwargs={"literal_binds": True}))
-        if limit and offset:
-            return result.all()
 
         scalar_result = result.scalars()
         if one:
@@ -243,7 +240,6 @@ class Service:
             "offset": (pagination.page - 1) * pagination.count,
             "limit": pagination.count
         }
-        print(pagination)
         frames_params = {"one": False, **pagination}
         if me:
             frames_params["user_id"] = user.id
@@ -252,7 +248,7 @@ class Service:
         if not frames:
             return response
 
-        frames_id = [frame[0].id for frame in frames]
+        frames_id = [frame.id for frame in frames]
 
         attachments = await self.get_attachments_many(frames_id=frames_id)
         attachments_dict = {attachment.frame_id: attachment.content for attachment in attachments}
@@ -262,12 +258,12 @@ class Service:
 
         liked_posts = await self.get_user_liked_frames(frames_id=frames_id, user_id=user.id)
         liked_posts_list = [like.frame_id for like in liked_posts]
-        print(len(frames_id))
+
         for frame in frames:
-            frame_response = frame[0].fields
-            frame_response["preview"] = attachments_dict.get(frame[0].id, None)
-            frame_response["likes"] = likes_dict.get(frame[0].id, 0)
-            frame_response["is_liked"] = frame[0].id in liked_posts_list
+            frame_response = frame.fields
+            frame_response["preview"] = attachments_dict.get(frame.id, None)
+            frame_response["likes"] = likes_dict.get(frame.id, 0)
+            frame_response["is_liked"] = frame.id in liked_posts_list
             response.append(frame_response)
 
         return response
