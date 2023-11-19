@@ -118,7 +118,7 @@ class FramesRepository(BaseRepository):
             stmt = stmt.limit(limit).offset(offset).distinct()
 
         result = await self.session.execute(stmt)
-        print(stmt.compile())
+        print(stmt.compile(compile_kwargs={"literal_binds": True}))
         if limit and offset:
             return result.all()
 
