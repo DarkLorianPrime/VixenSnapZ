@@ -114,9 +114,10 @@ class FramesRepository(BaseRepository):
             queries.append(Frame.id == frame_id)
 
         stmt = stmt.filter(*queries).order_by(Frame.id)
-        if limit and offset:
-            stmt = stmt.limit(limit).offset(offset).distinct()
 
+        if limit and offset:
+            stmt = stmt.limit(limit).offset(offset)
+        print(stmt.compile(compile_kwargs={"literal_binds": True}))
         result = await self.session.execute(stmt)
 
         scalar_result = result.scalars()
