@@ -241,7 +241,7 @@ class Service:
         response = []
         pagination = {
             "offset": (pagination.page - 1) * pagination.count,
-            "limit": pagination.page * pagination.count
+            "limit": pagination.count
         }
         print(pagination)
         frames_params = {"one": False, **pagination}
