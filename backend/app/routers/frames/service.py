@@ -98,8 +98,8 @@ class LikeRepository(BaseRepository):
 class FramesRepository(BaseRepository):
     async def get(
             self,
-            limit: int,
-            offset: int,
+            limit: int = None,
+            offset: int = None,
             user_id: uuid.UUID = None,
             frame_id: uuid.UUID = None,
             one: bool = False
@@ -113,9 +113,13 @@ class FramesRepository(BaseRepository):
         if frame_id:
             queries.append(Frame.id == frame_id)
 
-        stmt = stmt.filter(*queries).order_by(Frame.id).offset(20).limit(30)
-        print(offset, limit)
+        stmt = stmt.filter(*queries).order_by(Frame.id)
+        if limit and offset:
+            stmt = stmt.limit(limit).offset(offset)
+
         result = await self.session.execute(stmt)
+        if limit and offset:
+            return result.all()
 
         scalar_result = result.scalars()
         if one:
@@ -219,7 +223,6 @@ class Service:
             frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
     ):
-        print((await self.session.execute(select(Frame).offset(20).limit(30))).scalars().all())
         return await self.frames.get(
             user_id=user_id,
             frame_id=frame_id,
