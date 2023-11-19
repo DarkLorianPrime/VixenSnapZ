@@ -240,6 +240,7 @@ class Service:
             "offset": (pagination.page - 1) * pagination.count,
             "limit": pagination.count
         }
+        print(pagination)
         frames_params = {"one": False, **pagination}
         if me:
             frames_params["user_id"] = user.id
