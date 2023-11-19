@@ -256,7 +256,7 @@ class Service:
 
         liked_posts = await self.get_user_liked_frames(frames_id=frames_id, user_id=user.id)
         liked_posts_list = [like.frame_id for like in liked_posts]
-
+        print(len(frames))
         for frame in frames:
             frame_response = frame.fields
             frame_response["preview"] = attachments_dict.get(frame.id, None)
