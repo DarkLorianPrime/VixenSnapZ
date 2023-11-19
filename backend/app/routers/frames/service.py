@@ -105,7 +105,7 @@ class FramesRepository(BaseRepository):
             one: bool = False
     ):
         queries = []
-        stmt = select(Frame).limit(limit).offset(offset)
+        stmt = select(Frame)
 
         if user_id:
             queries.append(Frame.owner_id == user_id)
@@ -113,7 +113,7 @@ class FramesRepository(BaseRepository):
         if frame_id:
             queries.append(Frame.id == frame_id)
 
-        stmt = stmt.filter(*queries)
+        stmt = stmt.filter(*queries).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
 
         scalar_result = result.scalars()
