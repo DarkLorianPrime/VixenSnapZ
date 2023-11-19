@@ -113,7 +113,7 @@ class FramesRepository(BaseRepository):
         if frame_id:
             queries.append(Frame.id == frame_id)
 
-        stmt = stmt.filter(*queries).offset(offset).limit(limit)
+        stmt = stmt.filter(*queries).order_by(Frame.id).offset(offset).limit(limit)
         print(offset, limit)
         result = await self.session.execute(stmt)
 
