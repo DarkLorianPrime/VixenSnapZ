@@ -115,9 +115,10 @@ class FramesRepository(BaseRepository):
 
         stmt = stmt.filter(*queries).order_by(Frame.id)
         if limit and offset:
-            stmt = stmt.limit(limit).offset(offset)
+            stmt = stmt.limit(limit).offset(offset).distinct()
 
         result = await self.session.execute(stmt)
+        print(stmt.compile())
         if limit and offset:
             return result.all()
 
