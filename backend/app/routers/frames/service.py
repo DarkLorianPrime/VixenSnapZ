@@ -142,10 +142,13 @@ class AttachmentsRepository(BaseRepository):
     async def get(
             self,
             query: BinaryExpression,
+            query_2: BinaryExpression = None,
             distinct: Mapped = None,
             one: bool = False
     ):
         stmt = select(Attachments).filter(query)
+        if query_2:
+            stmt = stmt.filter(query_2)
 
         if distinct:
             stmt = stmt.distinct(distinct)
@@ -204,6 +207,7 @@ class Service:
     async def get_attachments_many(self, frames_id: Sequence[int]):
         return await self.attachments.get(
             query=Attachments.frame_id.in_(frames_id),
+            query_2=Attachments.order == 0,
             distinct=Attachments.frame_id
         )
 
