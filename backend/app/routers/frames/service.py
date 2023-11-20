@@ -148,9 +148,7 @@ class AttachmentsRepository(BaseRepository):
         stmt = select(Attachments).filter(query)
 
         if distinct:
-            stmt = stmt.distinct(distinct)
-        else:
-            stmt = stmt.order_by(Attachments.order)
+            stmt = stmt.distinct(distinct).order_by(Attachments.order)
 
         response = await self.session.execute(stmt)
         response_scalar = response.scalars()
@@ -240,7 +238,7 @@ class Service:
             "offset": (pagination.page - 1) * pagination.count,
             "limit": pagination.count
         }
-        print(pagination)
+
         frames_params = {"one": False, **pagination}
         if me:
             frames_params["user_id"] = user.id
