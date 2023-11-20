@@ -40,6 +40,7 @@ class UserRepository:
 
     async def get(
             self,
+            user_id: uuid.UUID = None,
             username: str = None,
             hashed_password: str = None,
             email: str = None,
@@ -67,6 +68,9 @@ class UserRepository:
 
         if access_token:
             query.append(User.access_token == access_token)
+
+        if user_id:
+            query.append(User.id == user_id)
 
         stmt = stmt.filter(*query)
         result = await self.session.execute(stmt)
@@ -134,6 +138,10 @@ class Service:
     async def get_user_by_token(self, token: uuid.UUID) -> User:
         user = await self.users.get(access_token=token)
         return user
+
+    async def get_user(self, user_id):
+        result = await self.users.get(user_id=user_id)
+        return result
 
     async def get_users(self) -> Sequence[User]:
         result = await self.users.get(one=False)

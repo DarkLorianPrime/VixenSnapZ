@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -65,5 +66,16 @@ async def get_users_me(
 async def get_users(
         service: Annotated[Service, Depends()]
 ):
-    print(await service.get_users())
     return await service.get_users()
+
+
+@users_router.get(
+    "/{user_id}/",
+    response_model=GetUser,
+    dependencies=[Depends(get_user)]
+)
+async def get_user(
+        user_id: uuid.UUID,
+        service: Annotated[Service, Depends()]
+):
+    return await service.get_user(user_id)
