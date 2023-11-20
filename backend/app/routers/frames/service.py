@@ -148,13 +148,14 @@ class AttachmentsRepository(BaseRepository):
     ):
         stmt = select(Attachments).filter(query)
         if query_2:
-            stmt = stmt.filter(query_2)
+            stmt = stmt.where(query_2)
 
         if distinct:
             stmt = stmt.distinct(distinct)
         else:
             stmt = stmt.order_by(Attachments.order)
 
+        print(stmt.compile(compile_kwargs={"literal_binds": True}))
         response = await self.session.execute(stmt)
         response_scalar = response.scalars()
 
