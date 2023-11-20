@@ -256,6 +256,7 @@ class Service:
         frames_id = [frame.id for frame in frames]
 
         attachments = await self.get_attachments_many(frames_id=frames_id)
+        print(attachments)
         attachments_dict = {attachment.frame_id: attachment.content for attachment in attachments}
 
         posts_likes = await self.get_likes_many(frames_id=frames_id)
