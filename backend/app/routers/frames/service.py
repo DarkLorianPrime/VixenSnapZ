@@ -147,7 +147,7 @@ class AttachmentsRepository(BaseRepository):
             one: bool = False
     ):
         stmt = select(Attachments).filter(query)
-        if query_2:
+        if query_2 is not None:
             stmt = stmt.where(query_2)
 
         if distinct:
