@@ -148,7 +148,9 @@ class AttachmentsRepository(BaseRepository):
         stmt = select(Attachments).filter(query)
 
         if distinct:
-            stmt = stmt.distinct(distinct).order_by(Attachments.order)
+            stmt = stmt.distinct(distinct)
+        else:
+            stmt = stmt.order_by(Attachments.order)
 
         response = await self.session.execute(stmt)
         response_scalar = response.scalars()
