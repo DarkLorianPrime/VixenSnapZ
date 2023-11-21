@@ -86,6 +86,9 @@ async def toggle_like_frame(
         service: Annotated[Service, Depends()]
 ):
     await service.toggle_like(frame_uuid, user.id)
+    count = 0
     count_likes = await service.get_likes(frame_uuid)
-    print(count_likes)
-    return {"count": count_likes}
+    if count_likes:
+        count = count_likes[0][1]
+
+    return {"count": count}
