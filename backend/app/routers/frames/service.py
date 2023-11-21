@@ -208,6 +208,7 @@ class Service:
         return await self.likes.get(
             query=Likes.frame_id == frame_id,
             count_=True,
+            one=True
         )
 
     async def get_attachments_many(self, frames_id: Sequence[uuid.UUID]):
