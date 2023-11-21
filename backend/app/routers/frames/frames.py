@@ -22,9 +22,10 @@ async def get_frames(
         pagination: Annotated[Pagination, Depends()],
         user: Annotated[GetMe, Depends(get_user)],
         service: Annotated[Service, Depends()],
+        name_startswith: str = None,
         me: bool = False
 ):
-    result = await service.get_frames(user, me, pagination)
+    result = await service.get_frames(user, me, pagination, name_startswith)
     return PagedResponseSchema(
         total=len(result),
         results=result,

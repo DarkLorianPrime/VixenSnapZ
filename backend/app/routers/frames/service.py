@@ -230,6 +230,7 @@ class Service:
             self,
             limit: int = None,
             offset: int = None,
+            query: BinaryExpression = None,
             user_id: Optional[uuid.UUID] = None,
             frame_id: Optional[uuid.UUID] = None,
             one: Optional[bool] = True
@@ -246,7 +247,8 @@ class Service:
             self,
             user: User | GetMe,
             me: bool,
-            pagination: Pagination
+            pagination: Pagination,
+            name_startswith: str | None
     ):
         response = []
         pagination = {
@@ -255,6 +257,9 @@ class Service:
         }
 
         frames_params = {"one": False, **pagination}
+        if name_startswith:
+            frames_params["query"] = Frame.name.istartswith(name_startswith)
+
         if me:
             frames_params["user_id"] = user.id
 
