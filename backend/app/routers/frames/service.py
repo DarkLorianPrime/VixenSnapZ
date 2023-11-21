@@ -339,7 +339,8 @@ class Service:
 
         frame_response["likes"] = 0
         if post_likes:
-            frame_response["likes"] = post_likes[0][1]
+            frame_response["likes"] = post_likes[1]
+
         frame_response["is_liked"] = bool(is_liked)
         frame_response["attachments"] = [
             {
