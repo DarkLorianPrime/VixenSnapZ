@@ -155,7 +155,6 @@ class AttachmentsRepository(BaseRepository):
         else:
             stmt = stmt.order_by(Attachments.order)
 
-        print(stmt.compile(compile_kwargs={"literal_binds": True}))
         response = await self.session.execute(stmt)
         response_scalar = response.scalars()
 
@@ -198,14 +197,20 @@ class Service:
             user_id=user_id
         )
 
-    async def get_likes_many(self, frames_id: Sequence[int], user_id: uuid.UUID | None = None):
+    async def get_likes_many(self, frames_id: Sequence[uuid.UUID], user_id: uuid.UUID | None = None):
         return await self.likes.get(
             query=Likes.frame_id.in_(frames_id),
             user_id=user_id,
             count_=True,
         )
 
-    async def get_attachments_many(self, frames_id: Sequence[int]):
+    async def get_likes(self, frame_id: uuid.UUID):
+        return await self.likes.get(
+            query=Likes.frame_id.in_(frame_id),
+            count_=True,
+        )
+
+    async def get_attachments_many(self, frames_id: Sequence[uuid.UUID]):
         return await self.attachments.get(
             query=Attachments.frame_id.in_(frames_id),
             query_2=Attachments.order == 0,
@@ -257,7 +262,6 @@ class Service:
         frames_id = [frame.id for frame in frames]
 
         attachments = await self.get_attachments_many(frames_id=frames_id)
-        print({attachment.frame_id: attachment.order for attachment in attachments})
         attachments_dict = {attachment.frame_id: attachment.content for attachment in attachments}
 
         posts_likes = await self.get_likes_many(frames_id=frames_id)
@@ -325,7 +329,7 @@ class Service:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_EXISTS_FRAME)
 
         attachments = await self.get_attachments(frame_id=frame.id, one=False)
-        post_likes = await self.get_likes_many(frames_id=[frame.id], user_id=user.id)
+        post_likes = await self.get_likes_many(frames_id=[frame.id])
         is_liked = await self.get_user_liked_frames(frames_id=[frame.id], user_id=user.id)
 
         frame_response = frame.fields
