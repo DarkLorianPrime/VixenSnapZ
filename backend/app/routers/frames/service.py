@@ -104,6 +104,7 @@ class FramesRepository(BaseRepository):
             offset: int = None,
             user_id: uuid.UUID = None,
             frame_id: uuid.UUID = None,
+            query: BinaryExpression = None,
             one: bool = False
     ):
         queries = []
@@ -114,6 +115,9 @@ class FramesRepository(BaseRepository):
 
         if frame_id:
             queries.append(Frame.id == frame_id)
+
+        if query is not None:
+            queries.append(query)
 
         stmt = stmt.filter(*queries).order_by(Frame.id)
         if limit is not None and offset is not None:
@@ -239,6 +243,7 @@ class Service:
             user_id=user_id,
             frame_id=frame_id,
             one=one,
+            query=query,
             limit=limit,
             offset=offset
         )
