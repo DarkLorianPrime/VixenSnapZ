@@ -75,7 +75,9 @@ class LikeRepository(BaseRepository):
         stmt = stmt.where(*queries)
         result = await self.session.execute(stmt)
         if count_:
-            return result.all()
+            res = result.one_or_none() if one else result.all()
+
+            return res
 
         scalar_result = result.scalars()
         if not one:
