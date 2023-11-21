@@ -206,7 +206,7 @@ class Service:
 
     async def get_likes(self, frame_id: uuid.UUID):
         return await self.likes.get(
-            query=Likes.frame_id.in_(frame_id),
+            query=Likes.frame_id == frame_id,
             count_=True,
         )
 
@@ -329,7 +329,7 @@ class Service:
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=Responses.NOT_EXISTS_FRAME)
 
         attachments = await self.get_attachments(frame_id=frame.id, one=False)
-        post_likes = await self.get_likes_many(frames_id=[frame.id])
+        post_likes = await self.get_likes(frame_id=frame.id)
         is_liked = await self.get_user_liked_frames(frames_id=[frame.id], user_id=user.id)
 
         frame_response = frame.fields
