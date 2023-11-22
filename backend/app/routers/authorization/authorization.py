@@ -44,10 +44,10 @@ async def oauth_login(
     # ДОБАВИТЬ ОБНОВЛЕНИЕ ДАННЫХ ПРИ АУФЕ
     return {"access_token": await service.create_oauth_user(
         {
-            "username": user["screen_name"],
+            "username": result["screen_name"],
             "user_id": credentials.user_id,
             "email": credentials.email,
-            "name": f'{user["first_name"]} {user["last_name"]}'
+            "name": f'{result["first_name"]} {result["last_name"]}'
         }
     )}
 
