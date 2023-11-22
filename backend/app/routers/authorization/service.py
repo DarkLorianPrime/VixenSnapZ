@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated, Sequence
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import select, exists, insert
+from sqlalchemy import select, exists, insert, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
@@ -34,7 +34,7 @@ class UserRepository:
         await self.session.commit()
         return credentials
 
-    async def exists(self, username: str = None, email: str = None, user_id: int = None):
+    async def exists(self, username: str = None, email: str = None, user_id: int = None, is_or_: bool = True):
         query = []
         stmt = exists(User)
         if username is not None:
@@ -46,7 +46,10 @@ class UserRepository:
         if user_id is not None:
             query.append(User.user_id == user_id)
 
-        stmt = stmt.where(*query).select()
+        if is_or_:
+            query = or_(*query)
+
+        stmt = stmt.where(query).select()
         result = await self.session.execute(stmt)
         return result.scalar()
 
