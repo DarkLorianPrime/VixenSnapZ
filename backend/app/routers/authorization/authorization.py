@@ -53,6 +53,7 @@ async def oauth_login(
             "name": f'{result["first_name"]} {result["last_name"]}'
         }
     )
+    print(new_user)
     return {
         "access_token": new_user,
         "type": "bearer"
