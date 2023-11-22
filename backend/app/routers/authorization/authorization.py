@@ -39,17 +39,24 @@ async def oauth_login(
 
     user = await service.get_user(oauth_id=credentials.user_id)
     if user:
-        return {"access_token": user.access_token}
+        return {
+            "access_token": user.access_token,
+            "type": "bearer"
+        }
 
     # ДОБАВИТЬ ОБНОВЛЕНИЕ ДАННЫХ ПРИ АУФЕ
-    return {"access_token": await service.create_oauth_user(
+    new_user = await service.create_oauth_user(
         {
             "username": result["screen_name"],
             "user_id": credentials.user_id,
             "email": credentials.email,
             "name": f'{result["first_name"]} {result["last_name"]}'
         }
-    )}
+    )
+    return {
+        "access_token": new_user,
+        "type": "bearer"
+    }
 
 
 @router.post(
