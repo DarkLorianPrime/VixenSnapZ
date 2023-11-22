@@ -141,7 +141,6 @@ class Service:
         credentials = credentials.dict()
         hashed_password = await self.users.PasswordMethods.create_password(credentials["password"])
         credentials["password"] = hashed_password
-        del credentials["id"]
         return await self.users.create(credentials, User.id)
 
     async def get_user_token(
