@@ -21,7 +21,7 @@ router = APIRouter(prefix="/token")
 users_router = APIRouter(prefix="/users")
 
 
-@router.post("/oauth/")
+@router.post("/oauth/", response_model=AuthorizationReturn)
 async def oauth_login(
         credentials: Annotated[OAuthModel, Depends(OAuthModel.to_form)],
         service: Annotated[Service, Depends()]
@@ -32,7 +32,7 @@ async def oauth_login(
             headers={"Authorization": f"Bearer {credentials.access_token}"},
             params={"fields": "screen_name", "v": "5.199"}
         )
-    print(result.json())
+
     result = result.json()["response"][0]
     if result["id"] != credentials.user_id:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="sent user_id and user_id from token is not equal")

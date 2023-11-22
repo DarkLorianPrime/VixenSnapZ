@@ -29,7 +29,7 @@ class UserRepository:
         result = await self.session.execute(stmt)
 
         result_scalar = result.scalars()
-        credentials["id"] = result_scalar.first()
+        credentials[returning.key] = result_scalar.first()
 
         await self.session.commit()
         return credentials
