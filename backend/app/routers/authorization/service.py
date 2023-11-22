@@ -13,7 +13,7 @@ from routers.authorization.config import hash_token
 from routers.authorization.dependencies import validate_fields_not_empty
 from storages.database import get_session
 from routers.authorization.models import User
-from routers.authorization.pydantic_models import AuthorizationModel, RegistrationModel
+from routers.authorization.pydantic_models import AuthorizationModel, RegistrationRequestModel
 from routers.authorization.responses import Responses
 
 
@@ -24,12 +24,8 @@ class UserRepository:
     ):
         self.session = session
 
-    async def create(self, credentials):
-        hashed_password = await self.PasswordMethods.create_password(credentials["password"])
-        credentials["password"] = hashed_password
-        del credentials["id"]
-
-        stmt = insert(User).values(**credentials).returning(User.id)
+    async def create(self, credentials, returning):
+        stmt = insert(User).values(**credentials).returning(returning)
         result = await self.session.execute(stmt)
 
         result_scalar = result.scalars()
@@ -38,6 +34,22 @@ class UserRepository:
         await self.session.commit()
         return credentials
 
+    async def exists(self, username: str = None, email: str = None, user_id: int = None):
+        query = []
+        stmt = exists(User)
+        if username is not None:
+            query.append(User.username == username)
+
+        if email is not None:
+            query.append(User.email == email)
+
+        if user_id is not None:
+            query.append(User.user_id == user_id)
+
+        stmt = stmt.where(*query).select()
+        result = await self.session.execute(stmt)
+        return result.scalar()
+
     async def get(
             self,
             user_id: uuid.UUID = None,
@@ -45,7 +57,8 @@ class UserRepository:
             hashed_password: str = None,
             email: str = None,
             access_token: uuid.UUID = None,
-            one: bool = True
+            one: bool = True,
+            oauth_id: int = None,
     ):
         stmt = select(User)
         query = []
@@ -68,6 +81,9 @@ class UserRepository:
 
         if access_token:
             query.append(User.access_token == access_token)
+
+        if oauth_id:
+            query.append(User.user_id == oauth_id)
 
         if user_id:
             query.append(User.id == user_id)
@@ -111,17 +127,22 @@ class Service:
         self.session = session
         self.users = users
 
-    async def is_user_exists(self, username: str, email: str) -> bool:
-        stmt = exists().where(
-            User.username == username,
-            User.email == email
-        ).select()
-        result = await self.session.execute(stmt)
-        return result.scalar()
+    async def is_user_exists(self, username: str = None, email: str = None, user_id: int = None) -> bool:
+        return await self.users.exists(
+            username=username,
+            email=email,
+            user_id=user_id
+        )
 
-    async def create_user(self, credentials: RegistrationModel) -> User:
+    async def create_oauth_user(self, credentials):
+        return await self.users.create(credentials, User.access_token)
+
+    async def create_user(self, credentials: RegistrationRequestModel) -> User:
         credentials = credentials.dict()
-        return await self.users.create(credentials)
+        hashed_password = await self.users.PasswordMethods.create_password(credentials["password"])
+        credentials["password"] = hashed_password
+        del credentials["id"]
+        return await self.users.create(credentials, User.id)
 
     async def get_user_token(
             self,
@@ -139,8 +160,8 @@ class Service:
         user = await self.users.get(access_token=token)
         return user
 
-    async def get_user(self, user_id):
-        result = await self.users.get(user_id=user_id)
+    async def get_user(self, user_id: uuid.UUID = None, oauth_id: int = None):
+        result = await self.users.get(user_id=user_id, oauth_id=oauth_id)
         return result
 
     async def get_users(self) -> Sequence[User]:

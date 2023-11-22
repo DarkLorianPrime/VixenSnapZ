@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from sqlalchemy import String, DateTime, func, ForeignKey, Boolean
+from sqlalchemy import String, DateTime, func, ForeignKey, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,13 +11,19 @@ from storages.database import Base
 class User(Base):
     __tablename__ = "user"
 
-    password: Mapped[str] = mapped_column(String)
-    access_token: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4)
+    # global
     username: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     email: Mapped[str] = mapped_column(String)
     avatar: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
     registration_date: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    access_token: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4)
+
+    # oauth
+    user_id: Mapped[int] = mapped_column(Integer, nullable=True)
+
+    # backend
+    password: Mapped[str] = mapped_column(String, nullable=True)
 
 
 class Notify(Base):

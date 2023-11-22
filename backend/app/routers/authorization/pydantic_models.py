@@ -27,9 +27,7 @@ class AuthorizationModel(CustomModel):
     def password_validator(cls, value: str) -> str:
         return password_validate(value)
 
-
-class RegistrationModel(CustomModel):
-    id: uuid.UUID = None
+class RegistrationRequestModel(CustomModel):
     username: str
     password: str
     email: str
@@ -49,6 +47,10 @@ class RegistrationModel(CustomModel):
     @validator("password")
     def password_validator(cls, value: str) -> str:
         return password_validate(value)
+
+
+class RegistrationResponseModel(RegistrationRequestModel):
+    id: uuid.UUID = None
 
 
 class RegistrationReturn(BaseModel):
@@ -80,3 +82,12 @@ class GetMe(GetUser):
     email: str | None
 
 
+class OAuthModel(CustomModel):
+    access_token: str
+    user_id: int
+    email: str
+
+    @classmethod
+    @validator("email")
+    def email_validator(cls, value: str) -> str:
+        return email_validate(value)
