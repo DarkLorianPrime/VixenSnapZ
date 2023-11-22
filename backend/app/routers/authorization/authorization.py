@@ -32,7 +32,7 @@ async def oauth_login(
             headers={"Authorization": f"Bearer {credentials.access_token}"},
             params={"fields": "screen_name"}
         )
-
+    print(result.json())
     result = result.json()["response"][0]
     if result["user_id"] != credentials.user_id:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="sent user_id and user_id from token is not equal")
