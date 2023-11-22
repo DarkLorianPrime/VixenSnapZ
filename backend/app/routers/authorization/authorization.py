@@ -30,7 +30,7 @@ async def oauth_login(
         result = await client.get(
             "https://api.vk.com/method/users.get",
             headers={"Authorization": f"Bearer {credentials.access_token}"},
-            params={"fields": "screen_name"}
+            params={"fields": "screen_name", "v": "5.199"}
         )
     print(result.json())
     result = result.json()["response"][0]
