@@ -55,7 +55,7 @@ async def oauth_login(
     )
     print(new_user)
     return {
-        "access_token": new_user,
+        "access_token": new_user["access_token"],
         "type": "bearer"
     }
 
