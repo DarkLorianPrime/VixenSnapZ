@@ -38,18 +38,18 @@ async def oauth_login(
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="sent user_id and user_id from token is not equal")
 
     user = await service.get_user(oauth_id=credentials.user_id)
-    if not user:
+    if user:
         return {"access_token": user.access_token}
 
     # ДОБАВИТЬ ОБНОВЛЕНИЕ ДАННЫХ ПРИ АУФЕ
-    return await service.create_oauth_user(
+    return {"access_token": await service.create_oauth_user(
         {
             "username": user["screen_name"],
             "user_id": credentials.user_id,
             "email": credentials.email,
             "name": f'{user["first_name"]} {user["last_name"]}'
         }
-    )
+    )}
 
 
 @router.post(
