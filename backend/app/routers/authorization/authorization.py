@@ -34,7 +34,7 @@ async def oauth_login(
         )
     print(result.json())
     result = result.json()["response"][0]
-    if result["user_id"] != credentials.user_id:
+    if result["id"] != credentials.user_id:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="sent user_id and user_id from token is not equal")
 
     user = await service.get_user(oauth_id=credentials.user_id)
